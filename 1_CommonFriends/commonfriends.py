@@ -4,7 +4,8 @@ Hyounguk Shon
 
 Usage: spark-submit commonfriends.py [file.txt]
 
-Find potential friends pair based on number of mutual friends.
+Social network data mining for friend recommendation.
+Find pairs of potential friends based on number of mutual friends.
 
 Example text file: http://www.di.kaist.ac.kr/~swhang/ee412/hw1q1.zip
 '''
@@ -48,13 +49,14 @@ def generate_candidates(line):
     inf = 9999
     me, friends = line
     
-    ''' dist0: pair of distance zero. One is directly friend of another.
+    ''' dist0: pair of distance zero. One is an immediate friend of another.
     dist1: pair of distance one. Each share at least one common friend. '''
     dist0 = [(tuple(sorted((me, friend))), -inf) for friend in friends]
-    dist1 = [(pair, 1) for pair in itertools.permutations(friends, 2) if pair[0] <= pair[1]]
+    dist1 = [(pair, 1) for pair in itertools.permutations(friends, 2) if pair[0] < pair[1]]
     return dist0 + dist1
 
 def main():
+    ''' parameters '''
     nExecutor = 8
     topN = 10
 
