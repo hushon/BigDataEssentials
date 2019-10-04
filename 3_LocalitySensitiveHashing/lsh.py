@@ -164,6 +164,12 @@ def LSH(M, b=6, r=20):
     return result
 
 def main():
+    
+    ''' parameters '''
+    k_shingles = 3
+    nHashfunc = 120
+    bands_lsh = 6
+    rows_lsh = 20
 
     ''' read and preprocess data '''
     with open(sys.argv[1], 'r') as file:
@@ -178,7 +184,7 @@ def main():
 
 
     ''' Transform documents into binary matrix representing shingles '''
-    shingles = map(lambda l: get_shingles(l, k=3), lines) # [['Tro', 'roo', 'oop', 'ops', ...], ...]
+    shingles = map(lambda l: get_shingles(l, k=k_shingles), lines) # [['Tro', 'roo', 'oop', 'ops', ...], ...]
 
     # LUT: DocID string -> column index
     LUT = {DocID:i for i, DocID in enumerate(ids)}
@@ -186,7 +192,7 @@ def main():
 
     shingles = map(lambda l: l, shingles) # [['Tro', 'roo', 'oop', 'ops', ...], ...]
 
-    permutations = string_permutations(k=3)
+    permutations = string_permutations(k=k_shingles)
 
     for i in range(len(shingles)):
         vector = map(lambda s: permutations.index(s), shingles[i]) # [[13, 29, 12, 30, ...], ...]
@@ -199,10 +205,10 @@ def main():
 
 
     ''' generate minhash signature matrix '''
-    M = minhash(shingles)
+    M = minhash(shingles, nHashfunc=nHashfunc)
 
     ''' generate LSH matrix '''
-    similar_pairs = LSH(M)
+    similar_pairs = LSH(M, b=bands_lsh, r=rows_lsh)
 
     for pair in similar_pairs:
         pair = [LUT_transpose[i] for i in pair]
