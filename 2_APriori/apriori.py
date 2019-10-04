@@ -16,7 +16,7 @@ import os
 class triangularMatrix:
     '''
     Implements Triangular Matrix data structure.
-    Triangular matrix is indexed by i and j, while j>i. 
+    Triangular matrix is indexed by [i, j], while j>i. 
     '''
     def __init__(self, n, fillvalue=0):
         size = int(n*(n-1)/2.0)
@@ -27,8 +27,6 @@ class triangularMatrix:
         i, j = key
         if i<0 or j<0 or not j>i: 
             raise IndexError('index out of range: {}'.format([i, j]))
-        else:
-            return True
     
     def _linear_index(self, key):
         n = self.n
@@ -65,6 +63,7 @@ def main():
 
     ''' parameters '''
     support_thres = 200
+    topK = 10
 
     '''read and preprocess data '''
     with open(sys.argv[1], 'r') as file:
@@ -126,20 +125,16 @@ def main():
     print m
 
     ''' print # of frequent pairs '''
-    nFrequentPairs = 0
-    for i in tri_matrix.aslist():
-        if i >= support_thres: 
-            nFrequentPairs += 1
-    print nFrequentPairs # number of frequent pairs
+    nFrequentPairs = sum(k>=support_thres for k in tri_matrix.aslist())
+    print nFrequentPairs
 
-
-    ''' print top-10 frequent pairs '''
+    ''' print top-K frequent pairs '''
 
     # index of sorted triangular matrix
-    descendingIndex = sorted(tri_matrix.index_aslist(), reverse=True, key=lambda i: tri_matrix[i])
+    descendingIndex = sorted(tri_matrix.index_aslist(), reverse=True, key=lambda (i, j): tri_matrix[i, j])
 
     # translate index value to item ID string
-    for triindex in descendingIndex[:10]:
+    for triindex in descendingIndex[:topK]:
         i, j = triindex
         item_i = LUT2_transpose[i]
         item_j = LUT2_transpose[j]
