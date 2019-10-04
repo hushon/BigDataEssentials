@@ -13,6 +13,7 @@ Example text file: http://www.di.kaist.ac.kr/~swhang/ee412/browsing.txt
 import re
 import sys
 import os
+import itertools
 
 class triangularMatrix:
     '''
@@ -75,7 +76,6 @@ def main():
 
     ''' Pass 1: identify frequent items '''
     
-    ''' count frequncy of items '''
     # LUT1: item ID string -> index 0 ~ n-1
     LUT1 = {}
     LUT1_transpose = {}
@@ -93,8 +93,7 @@ def main():
         for item in basket:
             counts[LUT1[item]] += 1
 
-
-    ''' find frequent singletons '''
+    # filter by frequent singletons
     # LUT2: frequent item ID string -> index 0 ~ m-1
     LUT2 = {}
     LUT2_transpose = {}
@@ -106,28 +105,22 @@ def main():
             LUT2_transpose.update({index: item})
             index += 1
 
+    nFrequentItems = len(LUT2)
+    print nFrequentItems
+
 
     ''' Pass 2: count pairs of frequent items '''
-    m = len(LUT2)
-    tri_matrix = triangularMatrix(m, fillvalue=0)
-
+    tri_matrix = triangularMatrix(nFrequentItems, fillvalue=0)
     for basket in baskets:
-        
         basket = filter(lambda x: x in LUT2, basket) # filter by frequent items
         basket = map(lambda x: LUT2[x], basket)
+        for i, j in itertools.permutations(basket, 2):
+            if i < j:
+                tri_matrix[i, j] += 1
 
-        for i in basket:
-            for j in basket:
-                if j > i:
-                    tri_matrix[i, j] += 1
-
-
-    ''' print # of frequent items '''
-    print m
-
-    ''' print # of frequent pairs '''
     nFrequentPairs = sum(k>=support_thres for k in tri_matrix.aslist())
     print nFrequentPairs
+
 
     ''' print top-K frequent pairs '''
 
