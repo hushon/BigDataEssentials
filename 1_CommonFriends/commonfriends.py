@@ -36,30 +36,46 @@ def split_me_and_friends(l):
     assert '' not in friends
     return (me, friends)
 
-def connecteds_and_commons(line):
+def generate_candidates(line):
     '''
-    friends: [((me, friend1), -9999999999), ...]
-    friendsoffriend: [((friend1, friend2), 1), ...]
+    Arg:
+        line (tuple): Friend relation
+    Example:
+        line: (9, [0, 6085, 18972, 19269])
+        dist0: [((0,9), -9999), ((9,6085), -9999), ...]
+        dist1: [((0,6085), 1), ((0,18972), 1),...]
     '''
+    inf = 9999
     me, friends = line
-    friends = [((me, friend), -9999999999) for friend in friends]
-    friendsoffriend = [(pair, 1) for pair in itertools.permutations(friends, 2)]
-    return friends + friendsoffriend
+    
+    ''' dist0: pair of distance zero. One is directly friend of another.
+    dist1: pair of distance one. Each share at least one common friend. '''
+    dist0 = [(tuple(sorted((me, friend))), -inf) for friend in friends]
+    dist1 = [(pair, 1) for pair in itertools.permutations(friends, 2) if pair[0] <= pair[1]]
+    return dist0 + dist1
 
 def main():
+    nExecutor = 8
+    topN = 10
 
     conf = SparkConf()
     sc = SparkContext(conf=conf)
 
-    lines = sc.textFile(sys.argv[1])
-    lines = lines.map(split_me_and_friends)
-    lines = lines.flatMap(connecteds_and_commons)
-    lines = lines.reduceByKey(lambda x, y: x + y)
-    lines = lines.filter(lambda l: l[1] > 0)
-    lines = lines.sortByKey()
+    ''' parse and generate graph '''
+    lines = sc.textFile(sys.argv[1], nExecutor)
+    graph = lines.map(split_me_and_friends)
 
-    for pair, count in lines.collect():
-        print pair, count
+    ''' generate candidates tuples '''
+    candidates = graph.flatMap(generate_candidates)
+
+    ''' find potential friends '''
+    candidates = candidates.reduceByKey(lambda x, y: x + y)
+    potentialfriends = candidates.filter(lambda x: x[1] > 0)
+    potentialfriends = potentialfriends.sortBy(lambda x: x[1], ascending=False)
+
+    ''' print top-N potential friends '''
+    for k, v in potentialfriends.collect()[:topN]:
+        print '{}\t{}\t{}'.format(k[0], k[1], v)
 
 if __name__ == '__main__':
 
@@ -67,4 +83,4 @@ if __name__ == '__main__':
     
     starttime = time.time()
     main()
-    print 'Executed in: {}'.format(time.time()-starttime)
+    # print 'Executed in: {}'.format(time.time()-starttime)

@@ -1,6 +1,6 @@
 '''
 Hyounguk Shon
-21-Sep-2019
+01-Oct-2019
 
 Finding frequent pairs using A-priori algorithm.
 
@@ -13,6 +13,54 @@ import re
 import sys
 import os
 
+class triangularMatrix:
+    '''
+    Implements Triangular Matrix data structure.
+    Triangular matrix is indexed by i and j, while j>i. 
+    '''
+    def __init__(self, n, fillvalue=0):
+        size = int(n*(n-1)/2.0)
+        self.n = n
+        self.matrix = [fillvalue]*size
+
+    def _check_indices(self, key):
+        i, j = key
+        if i<0 or j<0 or not j>i: 
+            raise IndexError('index out of range: {}'.format([i, j]))
+        else:
+            return True
+    
+    def _linear_index(self, key):
+        n = self.n
+        i, j = key
+        return int(i*(n-(i+1)/2.0)) + j - i - 1
+    
+    def __getitem__(self, key):
+        n = self.n
+        self._check_indices(key)
+        index = self._linear_index(key)
+        return self.matrix[index]
+
+    def __setitem__(self, key, item):
+        n = self.n
+        self._check_indices(key)
+        index = self._linear_index(key)
+        self.matrix[index] = item
+
+    def __len__(self):
+        return len(self.matrix)
+
+    def aslist(self):
+        return self.matrix
+    
+    def index_aslist(self):
+        n = self.n
+        trimatrix_index = triangularMatrix(n)
+        for i in range(n-1):
+            for j in range(i+1, n, 1):
+                trimatrix_index[i, j] = (i, j)
+        return trimatrix_index.aslist()
+
 def main():
 
     ''' parameters '''
@@ -23,50 +71,46 @@ def main():
         lines = file.readlines()
 
     baskets = map(lambda l: re.split(r'[^\w]+', l), lines)
-    baskets = map(lambda x: filter(None, x), baskets) # remove empty string
+    baskets = map(lambda x: filter(None, x), baskets)
 
-    ''' Pass 1 '''
-    LUT1 = {} # id string -> 1 ~ n
-    LUT1_transpose = {} # 1 ~ n -> id string
-    count = [] # integer -> frequency
+    ''' Pass 1: identify frequent items '''
+    
+    ''' count frequncy of items '''
+    # LUT1: item ID string -> index 0 ~ n-1
+    LUT1 = {}
+    LUT1_transpose = {}
+    index = 0
     for basket in baskets:
         for item in basket:
-            if item not in LUT1: 
-                # update lookup table
-                key, value = item, len(LUT1) + 1
-                LUT1.update({
-                    key: value
-                    })
-                
-                LUT1_transpose.update({
-                    value: key
-                    })
-
-                count.append(1) # update count
-            else:
-                # update count
-                count[LUT1[item]-1] += 1
-
-    ''' find singletons with support >= s '''
-    LUT2 = {} # id string -> 1 ~ m
-    LUT2_transpose = {} # 1 ~ m -> id string
-
-    for item in LUT1:
-        if count[LUT1[item]-1] >= support_thres:
-            # update LUT2
-            key, value = item, len(LUT2) + 1
-            LUT2.update({
-                key: value
-                })
-
-            LUT2_transpose.update({
-                value: key
-                })
+            if item not in LUT1:
+                LUT1.update({item: index})
+                LUT1_transpose.update({index: item})
+                index += 1
+    
+    # count frequency of items
+    counts = [0]*len(LUT1)
+    for basket in baskets:
+        for item in basket:
+            counts[LUT1[item]] += 1
 
 
-    ''' Pass 2 '''
+    ''' find frequent singletons '''
+    # LUT2: frequent item ID string -> index 0 ~ m-1
+    LUT2 = {}
+    LUT2_transpose = {}
+    index = 0
+    for i, count in enumerate(counts):
+        if count >= support_thres:
+            item = LUT1_transpose[i]
+            LUT2.update({item: index})
+            LUT2_transpose.update({index: item})
+            index += 1
+
+
+    ''' Pass 2: count pairs of frequent items '''
     m = len(LUT2)
-    tri_matrix = [0] * int(m*(m-1)/2.0) # initialize matrix
+    tri_matrix = triangularMatrix(m, fillvalue=0)
+
     for basket in baskets:
         
         basket = filter(lambda x: x in LUT2, basket) # filter by frequent items
@@ -75,40 +119,32 @@ def main():
         for i in basket:
             for j in basket:
                 if j > i:
-                    tri_index = int((i-1)*(m-i/2.0) + j - i - 1)
-                    tri_matrix[tri_index] += 1
+                    tri_matrix[i, j] += 1
+
 
     ''' print # of frequent items '''
     print m
 
     ''' print # of frequent pairs '''
     nFrequentPairs = 0
-    for i in tri_matrix:
-        if i >= support_thres: nFrequentPairs += 1
+    for i in tri_matrix.aslist():
+        if i >= support_thres: 
+            nFrequentPairs += 1
     print nFrequentPairs # number of frequent pairs
+
 
     ''' print top-10 frequent pairs '''
 
     # index of sorted triangular matrix
-    descendingIndex = sorted(range(len(tri_matrix)), reverse=True, key=lambda i: tri_matrix[i])
-    
-    # make lookup table for converting index to (i, j)
-    key2ij = []
-    for i in range(m):
-        for j in range(m):
-            if j > i:
-                key2ij.append((i, j))
-    assert len(key2ij) == int(m*(m-1)/2.0)
+    descendingIndex = sorted(tri_matrix.index_aslist(), reverse=True, key=lambda i: tri_matrix[i])
 
-    # convert (i, j) to item id string
-    for index in descendingIndex[:10]:
-        i, j = key2ij[index]
-
+    # translate index value to item ID string
+    for triindex in descendingIndex[:10]:
+        i, j = triindex
         item_i = LUT2_transpose[i]
         item_j = LUT2_transpose[j]
-        tri_index = int((i-1)*(m-i/2.0) + j - i - 1)
 
-        print '{}\t{}\t{}'.format(item_i, item_j, tri_matrix[index])
+        print '{}\t{}\t{}'.format(item_i, item_j, tri_matrix[triindex])
 
 
 if __name__ == '__main__':
