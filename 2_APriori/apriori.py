@@ -2,7 +2,8 @@
 Hyounguk Shon
 01-Oct-2019
 
-Finding frequent pairs using A-priori algorithm.
+Market-basket analysis using A-priori algorithm.
+Find frequent pairs from baskets of items.
 
 Usage: python apriori.py [file.txt]
 
