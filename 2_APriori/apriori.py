@@ -14,6 +14,7 @@ import re
 import sys
 import os
 import itertools
+import time
 
 class triangularMatrix:
     '''
@@ -140,4 +141,6 @@ if __name__ == '__main__':
 
     assert os.path.exists(sys.argv[1]), 'Cannot find file.'
 
+    starttime = time.time()
     main()
+    print 'Executed in: {}'.format(time.time()-starttime)

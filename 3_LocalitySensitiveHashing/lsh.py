@@ -221,4 +221,4 @@ if __name__ == '__main__':
 
     starttime = time.time()
     main()
-    # print 'Executed in: {}'.format(time.time()-starttime)
+    print 'Executed in: {}'.format(time.time()-starttime)
