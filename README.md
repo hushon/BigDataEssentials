@@ -1,8 +1,12 @@
-# Introduction to Big Data Analysis
+# Big Data Analysis Algorithms in Python and Spark
+## Introduction
+
+Python implementation of basic algorithms for big data analysis. Some requires Apache Spark.
+
 ## Requirements
 
- - Python 2
- - Apache Spark
+ - Python 2.7
+ - Apache Spark 3.6
 
 ## References
 
