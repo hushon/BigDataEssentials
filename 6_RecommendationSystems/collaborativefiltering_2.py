@@ -2,11 +2,12 @@
 Hyounguk Shon
 25-Oct-2019
 
-Usage: python collaborativefiltering.py [file.txt]
+Usage: python collaborativefiltering.py [source_file.txt] [target_file.txt]
 
 Collaborative filtering algorithm.
 
-Example text file: http://www.di.kaist.ac.kr/~swhang/ee412/ratings.txt
+Example source file: http://www.di.kaist.ac.kr/~swhang/ee412/ratings.txt
+Example target file: http://www.di.kaist.ac.kr/~swhang/ee412/ratings_test.txt
 '''
 
 import sys
@@ -25,7 +26,7 @@ def parse(l):
     userID, movieID, rating, timestamp = l.split(',')
     userID = int(userID)
     movieID = int(movieID)
-    rating = float(rating)
+    rating = float(rating) if rating != '' else rating
     timestamp = int(timestamp)
     return [userID, movieID, rating, timestamp]
 
@@ -61,31 +62,35 @@ def normalize_utility_matrix(M):
     Return:
         Row-wise normalized M
     '''
-    return M - np.nanmean(M, axis=1)[..., np.newaxis]
+    return (M - np.nanmean(M, axis=1)[..., np.newaxis]) / np.nanstd(M, axis=1)[..., np.newaxis]
 
 def user_collaborative_filtering(M):
-
     '''normalize utility matrix'''
     normalized_M = normalize_utility_matrix(M)
 
     ''' user-based collaborative filtering '''
-    # ID variables are denoted as index value
-    U = 600-2
-    top_ten_similar_users = sorted(range(normalized_M.shape[0]), key=lambda x: cosine(normalized_M[x, :], normalized_M[U, :]), reverse=True)[:10]
+    # find top-10 similar users for each user
+    X = np.nan_to_num(M)
+    denom = np.linalg.norm(X, axis=1)[..., np.newaxis]
 
-    # slim utility matrix by top-10 similar users
-    N = M[top_ten_similar_users, :]
-    
-    # iterate though columns 0~999 of matrix N, and fill out M[U, 0:1000]
-    prediction = M[U, 0:1000].copy()
-    for j, movie_ratings in enumerate(N[:, 0:1000].T):
-        assert np.isnan(prediction[j])
-        prediction[j] = mean(movie_ratings)
-    
-    # print top-5 recommended movies among 1~1000
-    top_five_recommended_movies = np.argsort(-prediction)[:5]
-    for m in top_five_recommended_movies:
-        print '{}\t{}'.format( m + 1, prediction[m])
+    Z = np.matmul(
+        X / (denom + 1e-6), 
+        (X / (denom + 1e-6)).T
+    )
+
+    Q = np.argsort(-Z, axis=1)[:, 1:11]
+    assert Q.shape == (671, 10)
+    top_ten_similar_users_list = list(Q)
+
+    # fill in blanks utility matrix by user-based collaborative filtering
+    N = M.copy()
+    # predict using top-10 similar users
+    K = np.nanmean(N[top_ten_similar_users_list, :], axis=1)
+    mask = np.isnan(N)
+    N = K*mask + np.nan_to_num(N) # this part isn't correct
+
+    N = np.nan_to_num(N)
+    return N
 
 def item_collaborative_filtering(M):
     
@@ -96,13 +101,9 @@ def item_collaborative_filtering(M):
     U = 600-2
     prediction = M[U, 0:1000].copy()
 
-    ''' find top-10 similarly rated items 
-    # X: target utility matrix (subject for prediction)
-    # Y: source utility matrix (as a pre-condition) '''
     X = np.nan_to_num(normalized_M[:, 0:1000])
     Y = np.nan_to_num(normalized_M[:, 1000:])
 
-    # calculate cosine similarity between source and target items
     Z = np.matmul(
         (X / (np.linalg.norm(X, axis=0) + 1e-6)).T,
         (Y / (np.linalg.norm(Y, axis=0) + 1e-6)))
@@ -123,13 +124,18 @@ def item_collaborative_filtering(M):
 
 def main():
     ''' parameters '''
-    filepath = sys.argv[1]
+    filepath_trainset = sys.argv[1]
+    filepath_testset = sys.argv[2]
+    filepath_output = './output3.txt'
 
     ''' read and parse dataset '''
-    with open(filepath, 'r') as file:
+    with open(filepath_trainset, 'r') as file:
         lines = file.readlines()
+        ratings = map(parse, lines)
 
-    ratings = map(parse, lines)
+    with open(filepath_testset, 'r') as file:
+        lines = file.readlines()
+        ratings_test = map(parse, lines)
 
     ''' make utility matrix '''
     # initialize M with NaN value
@@ -139,14 +145,21 @@ def main():
     for u, m, r, t in ratings:
         M[u-2, m-1] = r
 
-    user_collaborative_filtering(M)
+    ''' do user-user collaborative filtering '''
+    N = user_collaborative_filtering(M)
 
-    item_collaborative_filtering(M)
+    ''' iterate through queries and write output to file '''
+    with open(filepath_output, mode='wb') as file:
+        for userID, movieID, _, timestamp in ratings_test:
+            prediction = N[userID - 2, movieID - 1]
+            file.write('{},{},{},{}'.format(userID, movieID, prediction, timestamp))
+            file.write('\n')
+    
 
 if __name__ == '__main__':
 
     ''' sanity check '''
-    assert os.path.exists(sys.argv[1]),  'Cannot find file.'
+    assert os.path.exists(sys.argv[1]) and os.path.exists(sys.argv[2]),  'Cannot find file.'
     
     starttime = time.time()
     main()
