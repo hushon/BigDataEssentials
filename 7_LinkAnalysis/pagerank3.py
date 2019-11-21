@@ -34,6 +34,7 @@ def main():
     beta = 0.9
     n_nodes = 1000
     n_workers = None
+    topN = 10
     sc = SparkContext(conf=SparkConf())
 
     ''' read and parse dataset '''
@@ -46,13 +47,13 @@ def main():
     M = M.map(lambda ((i, j), v): (j, (i, v))).join(col_sum).map(lambda (j, ((i, v1), v2)): ((i, j), v1/v2))
 
     ''' iterate V '''
-    for _ in range(10):
+    for _ in range(3):
         bMV = M.map(lambda ((i, j), v): (j, (i, v))).join(V).map(lambda (j, ((i, v1), v2)): (i, beta*v1*v2)).reduceByKey(lambda x, y: x+y)
         V = bMV.union(bE).reduceByKey(lambda x, y: x+y)
 
     ''' print result '''
-    print V.map(lambda (i, v): v).reduce(lambda x, y: x+y)
-    print len(V.sortByKey().collect())
+    for (i, v) in V.takeOrdered(topN, key=lambda (i, v): -v):
+        print '%d\t%.5f' % (i, v)
 
 if __name__ == '__main__':
     ''' sanity check '''
