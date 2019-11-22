@@ -45,20 +45,20 @@ def betweenness(root, level_LUT, graph_LUT):
     
     ''' compute node weight '''
     # make DAG using level
-    DAG_LUT = dict()
-    for k, v in graph_LUT.iteritems():
-        try:
-            DAG_LUT.update({k: filter(lambda n: level_LUT[n] - level_LUT[k] == 1, v)})
-        except Exception as e:
-            print k, v
-            raise ValueError
-        else:
-            pass
-        finally:
-            pass
+    # DAG_LUT = dict()
+    # for k, v in graph_LUT.iteritems():
+    #     try:
+    #         DAG_LUT.update({k: filter(lambda n: level_LUT[n] - level_LUT[k] == 1, v)})
+    #     except Exception as e:
+    #         print k, v
+    #         raise ValueError
+    #     else:
+    #         pass
+    #     finally:
+    #         pass
 
     # compute node weight
-    node_weight = {k: 0 for k in DAG_LUT.keys()}
+    node_weight = {k: 0 for k in graph_LUT.keys()}
     node_weight[root] = 1
 
     visited = []
@@ -67,17 +67,17 @@ def betweenness(root, level_LUT, graph_LUT):
     while len(queue) > 0:
         curr_node = queue.pop()
         if curr_node not in visited:
-            for child_node in DAG_LUT[curr_node]:
+            for child_node in filter(lambda n: level_LUT[n] - level_LUT[curr_node] == 1, graph_LUT[curr_node]):
                 queue.insert(0, child_node)
                 node_weight[child_node] += node_weight[curr_node]
             visited.append(curr_node)
 
     ''' compute edge weight '''
     # make reverse directed DAG
-    DAG_reverse_LUT = dict()
-    assert len(level_LUT) == len(graph_LUT)
-    for k, v in graph_LUT.iteritems():
-        DAG_reverse_LUT.update({k: filter(lambda n: level_LUT[k] - level_LUT[n] == 1, v)})
+    # DAG_reverse_LUT = dict()
+    # assert len(level_LUT) == len(graph_LUT)
+    # for k, v in graph_LUT.iteritems():
+    #     DAG_reverse_LUT.update({k: filter(lambda n: level_LUT[k] - level_LUT[n] == 1, v)})
 
     # visit node using visited stack
     edge_weight = []
@@ -86,9 +86,9 @@ def betweenness(root, level_LUT, graph_LUT):
     while len(visited) > 0:
         curr_node = visited.pop()
 
-        child_weight_sum = sum([node_weight[n] for n in DAG_reverse_LUT[curr_node]])
+        child_weight_sum = sum([node_weight[n] for n in graph_LUT[curr_node] if level_LUT[curr_node] - level_LUT[n] == 1])
 
-        for child_node in DAG_reverse_LUT[curr_node]:
+        for child_node in filter(lambda n: level_LUT[curr_node] - level_LUT[n] == 1, graph_LUT[curr_node]):
             weight = (1.0 + node_inflow[curr_node]) * node_weight[child_node] / child_weight_sum
             edge_weight.append((tuple(sorted((curr_node, child_node))), weight))
             node_inflow[child_node] += weight
@@ -101,6 +101,7 @@ def main():
     filepath = sys.argv[1]
     sc = SparkContext(conf=SparkConf())
     n_workers = None
+    topN = 10
 
     ''' read and parse dataset '''
     lines = sc.textFile(filepath, n_workers)
@@ -121,48 +122,20 @@ def main():
 
     # a,b,c,d,e,f,g,h,i,j,k = range(1,12,1)
     # graph_LUT = {a:[b,c,d,e], b:[a,c,f], c:[a,b,f], d:[a,g,h], e:[a,h], f:[b,c,i], g:[d,i,j], h:[e,d,j], i:[f,g,k], j:[h,g,k], k:[i,j]}
-    level_LUT = bfs(graph_LUT, 1)
-    betweenness(1, level_LUT, graph_LUT)
-    return 0
+    # level_LUT = bfs(graph_LUT, 1)
+    # print betweenness(1, level_LUT, graph_LUT)
+    # return 0
 
     ''' bfs on graph '''
     roots = sc.parallelize(graph_LUT.keys(), n_workers)
     level_LUTs = roots.map(lambda root: (root, bfs(graph_LUT, root)) )
 
     ''' calculate betweenness of each edge '''
-    btwns = level_LUTs.flatMap(lambda (root, level_LUT): betweenness(root, level_LUT, graph_LUT))#.reduceByKey(lambda x, y: x+y).mapValues(lambda x: x/2.0)
+    btwns = level_LUTs.flatMap(lambda (root, level_LUT): betweenness(root, level_LUT, graph_LUT)).reduceByKey(lambda x, y: x+y).mapValues(lambda x: x/2.0)
 
-    print btwns.collect()
-
-
-
-    # depth_1_nodes = roots.map(lambda : )
-
-    # ''' build graph from lookup table '''
-    # graph = Graph()
-
-    # for key in graph_LUT.keys():
-    #     graph.add_vertice(key)
-
-    # for key_out, value in graph_LUT.iteritems():
-    #     for key_in in value:
-    #         graph.add_edge(key_out, key_in)
-    #         graph.add_edge(key_in, key_out)
-
-    # ''' Girvan-Newman algorithm for calculating betweeness of edges '''
-    # visited_nodes = set()
-
-    # root = sc.parallelize(graph_LUT.keys(), n_workers)
-    # level_1_node = root.flatMap(lambda n: graph_LUT[n]).distinct()
-    # level_2_node = level_1_node.flatMap(lambda n: graph_LUT[n]).distinct()
-
-    # vertices = sc.parallelize(graph.vertices, n_workers)
-    # bfs = vertices.map(vertex => (vertex, BFS(vertex, graph)))
-    # betweenness = bfs.map(vertex => calculateBetweenness(vertex, graph))
-    # betweenness = betweenness.reduceByKey(lambda x, y: x+y).mapByValue(lambda x: x/2.0)
-
-
-
+    ''' print result '''
+    for (id1, id2), v in btwns.takeOrdered(topN, key=lambda (k, v): -v):
+        print '%d\t%d\t%.5f' % (id1, id2, v)
 
 if __name__ == '__main__':
     ''' sanity check '''
