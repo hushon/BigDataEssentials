@@ -11,7 +11,6 @@ Example source file: http://www.di.kaist.ac.kr/~swhang/ee412/paper_authors.csv
 
 import sys
 import os
-import time
 from pyspark import SparkConf, SparkContext
 
 def parse(l):
@@ -27,7 +26,7 @@ def parse(l):
     return (paper_id, author_id)
 
 def bfs(graph_LUT, root):
-    ''' given an graph adjacency LUT and a root node, compute level of each node and DAG. '''
+    ''' given an graph adjacency LUT and a root node, compute level of each node. '''
     visited = set([root])
     queue = [root]
     level = {root: 0}
@@ -41,22 +40,9 @@ def bfs(graph_LUT, root):
     return level
 
 def betweenness(root, level_LUT, graph_LUT):
-    # (root, level_LUT, graph_LUT) -> [((edge1, edge2), betweenness), ...]
+    '''(root, level_LUT, graph_LUT) -> [((edge1, edge2), betweenness), ...]'''
     
     ''' compute node weight '''
-    # make DAG using level
-    # DAG_LUT = dict()
-    # for k, v in graph_LUT.iteritems():
-    #     try:
-    #         DAG_LUT.update({k: filter(lambda n: level_LUT[n] - level_LUT[k] == 1, v)})
-    #     except Exception as e:
-    #         print k, v
-    #         raise ValueError
-    #     else:
-    #         pass
-    #     finally:
-    #         pass
-
     # compute node weight
     node_weight = {k: 0 for k in graph_LUT.keys()}
     node_weight[root] = 1
@@ -73,12 +59,6 @@ def betweenness(root, level_LUT, graph_LUT):
             visited.append(curr_node)
 
     ''' compute edge weight '''
-    # make reverse directed DAG
-    # DAG_reverse_LUT = dict()
-    # assert len(level_LUT) == len(graph_LUT)
-    # for k, v in graph_LUT.iteritems():
-    #     DAG_reverse_LUT.update({k: filter(lambda n: level_LUT[k] - level_LUT[n] == 1, v)})
-
     # visit node using visited stack
     edge_weight = []
     node_inflow = {k: 0.0 for k in graph_LUT.keys()}
@@ -105,29 +85,19 @@ def main():
 
     ''' read and parse dataset '''
     lines = sc.textFile(filepath, n_workers)
-
-    # remove csv column header
     header = lines.first()
     lines = lines.filter(lambda l: l != header)
-
-    # parse
-    paper2author = lines.map(parse) # (paper, author)
+    paper2author = lines.map(parse) # paper -> author
 
     ''' preprocess dataset '''
     paper2authors = paper2author.join(paper2author)
     author2author = paper2authors.map(lambda (k, v): v)
     author2author = author2author.filter(lambda (k, v): k != v).distinct()
-    author2coauthors = author2author.groupByKey() # (author, [coauthors])
-    graph_LUT = author2coauthors.mapValues(list).collectAsMap() # {author: [coauthors]}
-
-    # a,b,c,d,e,f,g,h,i,j,k = range(1,12,1)
-    # graph_LUT = {a:[b,c,d,e], b:[a,c,f], c:[a,b,f], d:[a,g,h], e:[a,h], f:[b,c,i], g:[d,i,j], h:[e,d,j], i:[f,g,k], j:[h,g,k], k:[i,j]}
-    # level_LUT = bfs(graph_LUT, 1)
-    # print betweenness(1, level_LUT, graph_LUT)
-    # return 0
+    author2coauthors = author2author.groupByKey()
+    graph_LUT = author2coauthors.mapValues(list).collectAsMap() # author -> [coauthors]
 
     ''' bfs on graph '''
-    roots = sc.parallelize(graph_LUT.keys(), n_workers)
+    roots = author2coauthors.map(lambda k, v: k)
     level_LUTs = roots.map(lambda root: (root, bfs(graph_LUT, root)) )
 
     ''' calculate betweenness of each edge '''
@@ -141,6 +111,4 @@ if __name__ == '__main__':
     ''' sanity check '''
     assert os.path.exists(sys.argv[1]), 'Cannot find file.'
     
-    starttime = time.time()
     main()
-    print 'Executed in: {}'.format(time.time()-starttime)
