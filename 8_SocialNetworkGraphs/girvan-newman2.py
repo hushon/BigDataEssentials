@@ -97,7 +97,7 @@ def main():
     graph_LUT = author2coauthors.mapValues(list).collectAsMap() # author -> [coauthors]
 
     ''' bfs on graph '''
-    roots = author2coauthors.map(lambda k, v: k)
+    roots = author2coauthors.map(lambda (k, v): k)
     level_LUTs = roots.map(lambda root: (root, bfs(graph_LUT, root)) )
 
     ''' calculate betweenness of each edge '''
