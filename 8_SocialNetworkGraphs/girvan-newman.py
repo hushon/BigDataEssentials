@@ -11,7 +11,7 @@ Example source file: http://www.di.kaist.ac.kr/~swhang/ee412/paper_authors.csv
 
 import sys
 import os
-# import time
+import time
 from pyspark import SparkConf, SparkContext
 
 def parse(l):
@@ -91,7 +91,7 @@ class Graph:
 
     def lookup_by_key(self, key):
         ''' key -> Node '''
-        return return self.vertices_map[key]
+        return self.vertices_map[key]
 
     def vertices(self):
         return self.vertices_map.values()
@@ -116,16 +116,14 @@ def BFS(graph, root_key):
 
         for n in curr_node.out_nodes:
             queue.insert(0, n)
-    
-
-
-    while 
+     
 
 def main():
     ''' parameters '''
     filepath = sys.argv[1]
     sc = SparkContext(conf=SparkConf())
-    n_workers = 8
+    n_workers = None
+    max_search_depth = 10
 
     ''' read and parse dataset '''
     lines = sc.textFile(filepath, n_workers)
@@ -138,37 +136,50 @@ def main():
     paper2author = lines.map(parse) # (paper, author)
 
     ''' preprocess dataset '''
-    # paper2authors = paper2author.groupByKey() # (paper, [authors])
-    # paper2coauthors = paper2authors.flatMap(lambda (k, v): cartesian(v, v)).filter(lambda (k, v): k != v).distinct()
-    # paper2authors = paper2authors.flatMap(lambda (k, v): [(k, i) for i in v])
     paper2authors = paper2author.join(paper2author)
     author2author = paper2authors.map(lambda (k, v): v)
     author2author = author2author.filter(lambda (k, v): k != v).distinct()
     author2coauthors = author2author.groupByKey() # (author, [coauthors])
     graph_LUT = author2coauthors.mapValues(list).collectAsMap() # {author: [coauthors]}
 
-    ''' build graph from lookup table '''
-    graph = Graph()
+    # a,b,c,d,e,f,g,h,i,j,k = range(1,12,1)
+    # graph_LUT = {a:[b,c,d,e], b:[a,c,f], c:[a,b,f], d:[a,g,h], e:[a,h], f:[b,c,i], g:[d,i,j], h:[e,d,j], i:[f,g,k], j:[h,g,k], k:[i,j]}
 
-    for key in graph_LUT.keys():
-        graph.add_vertice(key)
+    ''' bfs on graph '''
+    roots = author2coauthors.map(lambda (k, v): k)
+    roots = roots.map(lambda r: ((r, r), 0))
+    for _ in range(max_search_depth):
+        roots = roots.union(roots.flatMap(lambda ((r, n), l): [((r, m), l+1) for m in graph_LUT[n]]))
+    roots = roots.reduceByKey(lambda l1, l2: min(l1, l2)).map(lambda ((r, n), l): (r, (n, l))).groupByKey()
+    print roots.map(lambda (k, v): (k, list(v))).collectAsMap()
+    return 0
 
-    for key_out, value in graph_LUT.iteritems():
-        for key_in in value:
-            graph.add_edge(key_out, key_in)
-            graph.add_edge(key_in, key_out)
+    
 
-    ''' Girvan-Newman algorithm for calculating betweeness of edges '''
-    visited_nodes = set()
+    # depth_1_nodes = roots.map(lambda : )
 
-    root = sc.parallelize(graph_LUT.keys(), n_workers)
-    level_1_node = root.flatMap(lambda n: graph_LUT[n]).distinct()
-    level_2_node = level_1_node.flatMap(lambda n: graph_LUT[n]).distinct()
+    # ''' build graph from lookup table '''
+    # graph = Graph()
 
-    vertices = sc.parallelize(graph.vertices, n_workers)
-    bfs = vertices.map(vertex => (vertex, BFS(vertex, graph)))
-    betweenness = bfs.map(vertex => calculateBetweenness(vertex, graph))
-    betweenness = betweenness.reduceByKey(lambda x, y: x+y).mapByValue(lambda x: x/2.0)
+    # for key in graph_LUT.keys():
+    #     graph.add_vertice(key)
+
+    # for key_out, value in graph_LUT.iteritems():
+    #     for key_in in value:
+    #         graph.add_edge(key_out, key_in)
+    #         graph.add_edge(key_in, key_out)
+
+    # ''' Girvan-Newman algorithm for calculating betweeness of edges '''
+    # visited_nodes = set()
+
+    # root = sc.parallelize(graph_LUT.keys(), n_workers)
+    # level_1_node = root.flatMap(lambda n: graph_LUT[n]).distinct()
+    # level_2_node = level_1_node.flatMap(lambda n: graph_LUT[n]).distinct()
+
+    # vertices = sc.parallelize(graph.vertices, n_workers)
+    # bfs = vertices.map(vertex => (vertex, BFS(vertex, graph)))
+    # betweenness = bfs.map(vertex => calculateBetweenness(vertex, graph))
+    # betweenness = betweenness.reduceByKey(lambda x, y: x+y).mapByValue(lambda x: x/2.0)
 
 
 
@@ -179,6 +190,6 @@ if __name__ == '__main__':
     ''' sanity check '''
     assert os.path.exists(sys.argv[1]), 'Cannot find file.'
     
-    # starttime = time.time()
+    starttime = time.time()
     main()
-    # print 'Executed in: {}'.format(time.time()-starttime)
+    print 'Executed in: {}'.format(time.time()-starttime)
