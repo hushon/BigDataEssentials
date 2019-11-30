@@ -1,7 +1,8 @@
-# Big Data Analysis Algorithms in Python and Spark
+# Big Data Analysis Algorithms in PySpark
 ## Introduction
 
-Python implementation of basic algorithms for big data analysis. Some requires Apache Spark.
+Big data analysis algorithms in Python and [Apache Spark](https://spark.apache.org/).  
+The problems are from the homeworks in Stanford CS246 course.
 
 ## Requirements
 

@@ -146,11 +146,12 @@ def main():
     # graph_LUT = {a:[b,c,d,e], b:[a,c,f], c:[a,b,f], d:[a,g,h], e:[a,h], f:[b,c,i], g:[d,i,j], h:[e,d,j], i:[f,g,k], j:[h,g,k], k:[i,j]}
 
     ''' bfs on graph '''
-    roots = author2coauthors.map(lambda (k, v): k)
+    # roots = author2coauthors.map(lambda (k, v): k)
+    roots = sc.parallelize(graph_LUT.keys(), n_workers)
     roots = roots.map(lambda r: ((r, r), 0))
-    for _ in range(max_search_depth):
-        roots = roots.union(roots.flatMap(lambda ((r, n), l): [((r, m), l+1) for m in graph_LUT[n]]))
-    roots = roots.reduceByKey(lambda l1, l2: min(l1, l2)).map(lambda ((r, n), l): (r, (n, l))).groupByKey()
+    for _ in range(max_search_depth): 
+        roots = roots.union(roots.flatMap(lambda ((r, n), l): [((r, m), l+1) for m in graph_LUT[n]])).reduceByKey(lambda l1, l2: min(l1, l2))
+    roots = roots.map(lambda ((r, n), l): (r, (n, l))).groupByKey()
     print roots.map(lambda (k, v): (k, list(v))).collectAsMap()
     return 0
 
