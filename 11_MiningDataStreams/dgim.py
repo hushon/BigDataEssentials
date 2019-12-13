@@ -2,7 +2,7 @@
 Hyounguk Shon
 11-Dec-2019
 
-Usage: python dgim.py [training.csv] [testing.csv]
+Usage: python dgim.py [stream.txt] k0 k1 ... kn
 
 Implementation of DGIM algorithm.
 
@@ -12,21 +12,20 @@ Example: http://www.di.kaist.ac.kr/~swhang/ee412/stream.txt
 import sys
 import os
 import time
-import numpy as np
 
 def parse(l):
     '''
     Arg:
         l (str)
-    Return: 
+    Return:
         An integer.
     '''
     l = int(l)
     return l
 
-class block:
-    def __init__(self, end, size):
-        self.end_timestamp = end 
+class bucket:
+    def __init__(self, right, size):
+        self.end_timestamp = right
         self.ones_count = size
 
     def __add__(self, other):
@@ -36,32 +35,44 @@ class block:
         return self
 
     def __repr__(self):
-        return "size-{} block ending at {}".format(self.ones_count, self.end_timestamp)
+        return "<DGIM bucket: right at {}, size {}>".format(\
+            self.ones_count, \
+            self.end_timestamp)
 
-class auto_merging_block_queue:
+class dgim_queue:
     '''
-    Queue-like data structure that self-merges blocks to satisfy DGIM invariant.
+    Queue-like data structure that self-merges buckets to satisfy invariant.
     '''
     def __init__(self):
-        self.blocks = [[]]
+        self.buckets = [[]]
 
     def push(self, b):
-        self.blocks[0].insert(0, b)
+        '''
+        Push a bucket into queue and merge if there exists more than three
+        buckets with the same size.
+        Args:
+            b (bucket): new bucket to push into queue
+        '''
+        self.buckets[0].insert(0, b)
         
-        for i in range(len(self.blocks)):
-            if len(self.blocks[i]) > 2:
-                x = self.blocks[i].pop()
-                y = self.blocks[i].pop()
+        # merge buckets
+        for i in range(len(self.buckets)):
+            if len(self.buckets[i]) > 2:
+                x = self.buckets[i].pop()
+                y = self.buckets[i].pop()
                 try:
-                    self.blocks[i+1].insert(0, x + y)
-                except:
-                    self.blocks.append([])
-                    self.blocks[i+1].insert(0, x + y)
+                    self.buckets[i+1].insert(0, x + y)
+                except IndexError:
+                    self.buckets.append([])
+                    self.buckets[i+1].insert(0, x + y)
 
     def query(self, t):
-        '''count number of ones in recent bits until timestamp t'''
+        '''count occurrence of one within recent bits down until timestamp t
+        Args:
+            t (int): earliest timestamp to trace
+        '''
         ones_count = 0
-        for q in self.blocks:
+        for q in self.buckets:
             for b in q:
                 if b.end_timestamp < t:
                     break
@@ -70,7 +81,6 @@ class auto_merging_block_queue:
                     last_count = b.ones_count
         ones_count -= last_count / 2.0
         return ones_count
-
 
 def main():
     ''' parameters '''
@@ -85,19 +95,18 @@ def main():
         window = file.read().splitlines()
         window = map(parse, window)
 
-    ''' generate blocks '''
-    queue = auto_merging_block_queue()
-
+    ''' generate buckets '''
+    queue = dgim_queue()
     for t, x in enumerate(window):
         if x:
-            queue.push(block(t, 1))
+            queue.push(bucket(t, 1))
 
-    ''' query '''
+    ''' query and print results '''
     for k in queries:
-        t_last = len(window) - 1
-        print "{}".format(queue.query(t_last - k + 1))
+        result = queue.query(len(window) - k)
+        print "{}".format(result)
 
 if __name__ == '__main__':
     starttime = time.time()
     main()
-    print 'Executed in: {}'.format(time.time()-starttime)
+    # print 'Executed in: {}'.format(time.time()-starttime)

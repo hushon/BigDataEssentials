@@ -85,9 +85,9 @@ def main():
     filepath_test = sys.argv[2]
     feature_size = 784
     output_size = 10
-    lr = 1e-2
+    lr = 1.0
     decay_rate = 0.95
-    max_epoch = 20
+    max_epoch = 50
 
     ''' read and parse dataset '''
     with open(filepath_train, 'r') as file:

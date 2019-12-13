@@ -1,7 +1,18 @@
 import numpy as np
 from numpy.linalg import norm
 
-def CUR(M, r):
+def frobenius(X):
+    X = np.array(X)
+    return np.sum(X**2)
+
+def poweriteration(M, thres=1e-3):
+    M = np.array(M)
+
+    while abs(np.sum(xk1 - xk)) < thres:
+        mul = np.matmul(M, xk)
+        xk, xk1 = xk1.copy(), xk1 = mul / frobenius(mul)
+
+def CUR_decomposition(M, r):
     p = (np.sum(M**2, axis=1)/norm(M)**2).flatten() # distribution of i
     q = (np.sum(M**2, axis=0)/norm(M)**2).flatten() # distribution of j
     
