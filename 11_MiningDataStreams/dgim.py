@@ -48,8 +48,8 @@ class dgim_queue:
 
     def push(self, b):
         '''
-        Push a bucket into queue and merge if there exists more than three
-        buckets with the same size.
+        Push a bucket into queue and merge if there exists more than two
+        buckets of the same size.
         Args:
             b (bucket): new bucket to push into queue
         '''
