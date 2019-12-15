@@ -2,7 +2,7 @@
 Hyounguk Shon
 12-Nov-2019
 
-Usage: python girvan-newman.py [file.csv]
+Usage: spark-submit girvan-newman.py [file.csv]
 
 Girvan-Newman algorithm.
 

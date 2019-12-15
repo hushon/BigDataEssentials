@@ -2,7 +2,7 @@
 Hyounguk Shon
 07-Nov-2019
 
-Usage: python pagerank.py [file.txt]
+Usage: spark-subit pagerank.py [file.txt]
 
 PageRank algorithm.
 
