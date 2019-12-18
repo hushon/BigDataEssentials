@@ -16,7 +16,7 @@ The problems are from the homeworks in Stanford CS246 course.
 3. Locality-sensitive Hashing: mining similar documents.
 4. K-means Clustering
 5. Dimensionality Reduction: Principal Component Analysis, CUR decomposition
-6. Collaborative Filtering: predicting rating and recommendation.
+6. Collaborative Filtering: predicting user rating by finding similar users.
 7. PageRank
 8. Girvan-Newman Algorithm: mining communities in a social-network graph.
 9. Support Vector Machine
