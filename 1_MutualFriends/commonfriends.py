@@ -42,10 +42,10 @@ def main():
     sc = SparkContext(conf=SparkConf())
 
     ''' read file and parse graph '''
-    lines = sc.textFile(filepath, 8)
+    lines = sc.textFile(filepath)
     graph = lines.map(parse).filter(lambda (k, v): v)
 
-    ''' generate graph '''
+    ''' calculate number of mutual friends between each pair, filter those that are immediate friends '''
     temp = graph.flatMapValues(lambda v: v)
     potentialfriend = temp.join(temp).filter(lambda (k, v): v[0] < v[1]).map(lambda (k, v): (v, 1))
     immediatefriend = graph.flatMap(lambda (k, v): [(tuple(sorted((k, x))), None) for x in v])
