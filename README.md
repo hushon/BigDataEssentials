@@ -1,13 +1,14 @@
 # Big Data Analysis Algorithms
 ## Introduction
 
-In this repository you will find common algorithms used in big data analytics. Implementations are written in Python and [Apache Spark](https://spark.apache.org/).  
+In this repository you will find common algorithms used in big data analytics. Implementations are written in Python and Apache Spark.  
 The problems are from the homeworks in Stanford CS246 course.
 
 ## Requirements
 
  - Python 2.7
  - Apache Spark 3.6
+ - NumPy
 
 ## Algorithms
 
