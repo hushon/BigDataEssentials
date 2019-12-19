@@ -42,11 +42,11 @@ def main():
     sc = SparkContext(conf=SparkConf())
 
     ''' read file and parse graph '''
-    lines = sc.textFile(filepath)
+    lines = sc.textFile(filepath, 8)
     graph = lines.map(parse).filter(lambda (k, v): v)
 
     ''' generate graph '''
-    temp = graph.flatMap(lambda (k, v): [(k, x) for x in v])
+    temp = graph.flatMapValues(lambda v: v)
     potentialfriend = temp.join(temp).filter(lambda (k, v): v[0] < v[1]).map(lambda (k, v): (v, 1))
     immediatefriend = graph.flatMap(lambda (k, v): [(tuple(sorted((k, x))), None) for x in v])
     potentialfriend = potentialfriend.union(immediatefriend).groupByKey().filter(lambda (k, v): None not in v).mapValues(sum)
