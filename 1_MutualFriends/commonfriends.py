@@ -39,8 +39,7 @@ def main():
     ''' parameters '''
     filepath = sys.argv[1]
     topN = 10
-    conf = SparkConf()
-    sc = SparkContext(conf=conf)
+    sc = SparkContext(conf=SparkConf())
 
     ''' read file and parse graph '''
     lines = sc.textFile(filepath)
@@ -48,7 +47,7 @@ def main():
 
     ''' generate graph '''
     temp = graph.flatMap(lambda (k, v): [(k, x) for x in v])
-    potentialfriend = temp.join(temp).map(lambda (k, v): (v, 1)).filter(lambda (k, v): k[0] < k[1])
+    potentialfriend = temp.join(temp).filter(lambda (k, v): v[0] < v[1]).map(lambda (k, v): (v, 1))
     immediatefriend = graph.flatMap(lambda (k, v): [(tuple(sorted((k, x))), None) for x in v])
     potentialfriend = potentialfriend.union(immediatefriend).groupByKey().filter(lambda (k, v): None not in v).mapValues(sum)
 
