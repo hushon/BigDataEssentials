@@ -11,6 +11,8 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
  - NumPy
 
 ## Algorithms
+*\*Items marked require Apache Spark.*  
+
 | No | Description | Spark |
 |---|---|---|
 | 1 | Friend recommendation based on counting mutual friends | ✔️ |
