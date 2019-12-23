@@ -30,6 +30,7 @@ class bucket:
 
     def __add__(self, other):
         '''merge self with other'''
+        assert isinstance(other, type(self))
         self.end_timestamp = max(self.end_timestamp, other.end_timestamp)
         self.ones_count += other.ones_count
         return self
@@ -83,12 +84,13 @@ class dgim_queue:
         return ones_count
 
 def main():
+    ''' sanity check '''
+    assert os.path.exists(sys.argv[1]), 'Cannot find file.'
+    assert len(sys.argv[2:]) > 0, 'must provide argument(s)'
+
     ''' parameters '''
     filepath = sys.argv[1]
     queries = map(int, sys.argv[2:])
-
-    ''' sanity check '''
-    assert os.path.exists(sys.argv[1]), 'Cannot find file.'
 
     ''' read and parse dataset '''
     with open(filepath, 'r') as file:
