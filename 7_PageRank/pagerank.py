@@ -2,17 +2,17 @@
 Hyounguk Shon
 07-Nov-2019
 
-Usage: spark-subit pagerank.py [file.txt]
+Usage: spark-submit pagerank.py [file.txt]
 
 PageRank algorithm.
 
-Example source file: http://www.di.kaist.ac.kr/~swhang/ee412/graph.txt
+Example dataset: http://www.di.kaist.ac.kr/~swhang/ee412/graph.txt
 '''
 
 import sys
 import os
-# import time
-from pyspark import SparkConf, SparkContext
+import time
+import pyspark
 
 
 def parse(l):
@@ -25,40 +25,57 @@ def parse(l):
     j, i = l.split()
     j = int(j)
     i = int(i)
-    return ((i, j), 1.0)
+    return (i, j)
+
+def sparseMatVecProduct(M, V):
+    '''
+    Matrix-vector product between a sparse matrix and a sparse vector.
+    Arg:
+        M (pyspark.rdd.RDD): a sparse matrix; (i, j) -> entry
+        V (pyspark.rdd.RDD): a sparse vector; j -> entry
+    Return:
+        A sparse vector; i -> entry
+    '''
+    assert isinstance(M, pyspark.rdd.RDD) and isinstance(V, pyspark.rdd.RDD)
+    return M.map(lambda ((i, j), v): (j, (i, v))).join(V)\
+        .map(lambda (j, ((i, v1), v2)): (i, v1*v2))\
+        .reduceByKey(lambda x, y: x+y)
 
 def main():
     ''' parameters '''
     filepath = sys.argv[1]
-    beta = 0.9
-    n_nodes = 1000
+    beta = 0.9 # taxation parameter
+    n_nodes = 1000 # number of distinct nodes
     max_iter = 50
     n_workers = None
     topN = 10
-    sc = SparkContext(conf=SparkConf())
+    sc = pyspark.SparkContext(conf=pyspark.SparkConf())
 
     ''' read and parse dataset '''
-    M = sc.textFile(filepath, n_workers).map(parse).distinct() # (i, j) -> 1.0
-    V = sc.parallelize([(j, 1.0/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
-    bE = sc.parallelize([(j, (1.0 - beta)/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
+    M = sc.textFile(filepath, n_workers).map(parse)
 
     ''' initialize M and V '''
+    M = M.distinct().map(lambda (i, j): ((i, j), 1.0))
     col_sum = M.map(lambda ((i, j), v): (j, v)).reduceByKey(lambda x, y: x+y)
     M = M.map(lambda ((i, j), v): (j, (i, v))).join(col_sum).map(lambda (j, ((i, v1), v2)): ((i, j), v1/v2))
+    V = sc.parallelize([(j, 1.0/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
+    E = sc.parallelize([(j, 1.0/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
 
     ''' iterate V '''
     for _ in range(max_iter):
-        bMV = M.map(lambda ((i, j), v): (j, (i, v))).join(V).map(lambda (j, ((i, v1), v2)): (i, beta*v1*v2)).reduceByKey(lambda x, y: x+y)
-        V = bMV.union(bE).reduceByKey(lambda x, y: x+y)
+        MV = sparseMatVecProduct(M, V)
+        V = MV.mapValues(lambda v: beta*v)\
+            .union(E.mapValues(lambda v: (1.0 - beta)*v))\
+            .reduceByKey(lambda x, y: x+y)
 
     ''' print result '''
     for (i, v) in V.takeOrdered(topN, key=lambda (i, v): -v):
-        print '%d\t%.5f' % (i, v)
+        print '{}\t{:.5f}'.format(i, v)
 
 if __name__ == '__main__':
     ''' sanity check '''
     assert os.path.exists(sys.argv[1]),  'Cannot find file.'
     
-    # starttime = time.time()
+    starttime = time.time()
     main()
-    # print 'Executed in: {}'.format(time.time()-starttime)
+    print 'Executed in: {}'.format(time.time()-starttime)
