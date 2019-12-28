@@ -14,12 +14,13 @@ import os
 import numpy as np
 import time
 import itertools
+from numpy.linalg import norm 
 
 def parse(l):
     '''
     Arg:
         l (str): a string of data.
-    Return: 
+    Return:
         A list.
     '''
     userID, movieID, rating, timestamp = l.split(',')
@@ -75,20 +76,20 @@ def user_collaborative_filtering(M):
 
     # slim utility matrix by top-10 similar users
     N = M[top_ten_similar_users, :]
-    
+
     # iterate though columns 0~999 of matrix N, and fill out M[U, 0:1000]
     prediction = M[U, 0:1000].copy()
     for j, movie_ratings in enumerate(N[:, 0:1000].T):
         assert np.isnan(prediction[j])
         prediction[j] = mean(movie_ratings)
-    
+
     # print top-5 recommended movies among 1~1000
     top_five_recommended_movies = np.argsort(-prediction)[:5]
     for m in top_five_recommended_movies:
         print '{}\t{}'.format( m + 1, prediction[m])
 
 def item_collaborative_filtering(M):
-    
+
     ''' normalize utility matrix '''
     normalized_M = normalize_utility_matrix(M)
 
@@ -96,7 +97,7 @@ def item_collaborative_filtering(M):
     U = 600-2
     prediction = M[U, 0:1000].copy()
 
-    ''' find top-10 similarly rated items 
+    ''' find top-10 similarly rated items
     # X: target utility matrix (subject for prediction)
     # Y: source utility matrix (as a pre-condition) '''
     X = np.nan_to_num(normalized_M[:, 0:1000])
@@ -106,7 +107,7 @@ def item_collaborative_filtering(M):
     Z = np.matmul(
         (X / (np.linalg.norm(X, axis=0) + 1e-6)).T,
         (Y / (np.linalg.norm(Y, axis=0) + 1e-6)))
-    
+
     Q = np.argsort(-Z, axis=1)[:, :10]
     Q = Q + 1000
 
@@ -115,7 +116,7 @@ def item_collaborative_filtering(M):
     for j in range(len(prediction)):
         prediction[j] = mean(M[U, Q[j, :]])
 
-    # print top-five recommendtion using item-item collaborative filtering 
+    # print top-five recommendtion using item-item collaborative filtering
     top_five_recommended_movies = np.argsort(-prediction)[:5]
     for m in top_five_recommended_movies:
         print '{}\t{}'.format( m + 1, prediction[m])
@@ -134,7 +135,7 @@ def main():
     ''' make utility matrix '''
     # initialize M with NaN value
     M = np.full(shape=(671, 164979), fill_value=np.nan, dtype=np.float)
-    
+
     # iterate over dataset and fill out utility matrix
     for u, m, r, t in ratings:
         M[u-2, m-1] = r
@@ -147,7 +148,7 @@ if __name__ == '__main__':
 
     ''' sanity check '''
     assert os.path.exists(sys.argv[1]),  'Cannot find file.'
-    
+
     starttime = time.time()
     main()
     print 'Executed in: {}'.format(time.time()-starttime)
