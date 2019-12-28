@@ -18,7 +18,7 @@ import pyspark
 def parse(l):
     '''
     Arg:
-        l (str)
+        l (str): string of <source node> <target node>
     Return: 
         A tuple
     '''
@@ -45,21 +45,21 @@ def main():
     ''' parameters '''
     filepath = sys.argv[1]
     beta = 0.9 # taxation parameter
-    n_nodes = 1000 # number of distinct nodes
-    max_iter = 50
+    max_iter = 10
     n_workers = None
     topN = 10
     sc = pyspark.SparkContext(conf=pyspark.SparkConf())
 
     ''' read and parse dataset '''
     M = sc.textFile(filepath, n_workers).map(parse)
+    node_ids = M.flatMap(lambda (i, j): [i, j]).distinct().collect()
 
     ''' initialize M and V '''
     M = M.distinct().map(lambda (i, j): ((i, j), 1.0))
     col_sum = M.map(lambda ((i, j), v): (j, v)).reduceByKey(lambda x, y: x+y)
     M = M.map(lambda ((i, j), v): (j, (i, v))).join(col_sum).map(lambda (j, ((i, v1), v2)): ((i, j), v1/v2))
-    V = sc.parallelize([(j, 1.0/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
-    E = sc.parallelize([(j, 1.0/n_nodes) for j in range(1, n_nodes+1, 1)], n_workers)
+    V = sc.parallelize([(j, 1.0/len(node_ids)) for j in node_ids], n_workers)
+    E = sc.parallelize([(j, 1.0/len(node_ids)) for j in node_ids], n_workers)
 
     ''' iterate V '''
     for _ in range(max_iter):
