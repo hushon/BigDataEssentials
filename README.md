@@ -11,7 +11,6 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
  - NumPy
 
 ## Algorithms
-*\*Items marked require Apache Spark.*  
 
 | No | Description | Spark |
 |---|---|---|
@@ -26,6 +25,11 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
 | 9 | Support Vector Machine |  |
 | 10 | Deep Learning |  |
 | 11 | DGIM algorithm: mining continuous stream of data |  |
+
+## TODO
+
+ - [ ] Upgrade to Python 3
+ - [ ] Pandas support
 
 ## References
 
