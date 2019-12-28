@@ -19,7 +19,7 @@ def parse(l):
     '''
     Arg:
         l (str)
-    Return: 
+    Return:
         A tuple, (vertex, neighbors)
     Example:
         input: '9   0,6085,18972,19269'
@@ -30,7 +30,7 @@ def parse(l):
     if len(neighbors)>0:
         neighbors = neighbors.split(',')
         neighbors = map(int, neighbors)
-    else: 
+    else:
         neighbors = []
     assert '' not in neighbors
     return (vertex, neighbors)
@@ -39,10 +39,11 @@ def main():
     ''' parameters '''
     filepath = sys.argv[1]
     topN = 10
+    n_workers = None
     sc = SparkContext(conf=SparkConf())
 
     ''' read file and parse graph '''
-    lines = sc.textFile(filepath)
+    lines = sc.textFile(filepath, n_workers)
     graph = lines.map(parse).filter(lambda (k, v): v)
 
     ''' calculate number of mutual friends between each pair, filter those that are immediate friends '''
@@ -58,7 +59,7 @@ def main():
 if __name__ == '__main__':
 
     assert os.path.exists(sys.argv[1]),  'Cannot find file.'
-    
+
     starttime = time.time()
     main()
     print 'Executed in: {}'.format(time.time()-starttime)
