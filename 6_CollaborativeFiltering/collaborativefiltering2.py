@@ -106,10 +106,10 @@ def nanmerge(master, branch):
     def nanmerge_scalar(m, b):
         if not np.isnan(m):
             return m
-        else if np.isnan(m) and np.isnan(b):
-            return np.nan
+        elif not np.isnan(b):
+            return b
         else:
-            
+            return np.nan
     return np.vectorize(nanadd_scalar)(x, y)
 
 def user_collaborative_filtering(M, topk=10):
@@ -127,17 +127,19 @@ def user_collaborative_filtering(M, topk=10):
     ''' user-based collaborative filtering '''
     S = similarity_matrix(normalized_M, type='user') # TODO: what if entire row is NaN?
     S = S - np.diag(np.diag(S))
-    top_ten_similar_users = np.argsort(S, axis=1)[:, :topk]
+    top_ten_similar_users = np.argsort(-S, axis=1)[:, :topk]
 
     # slim utility matrix by top-10 similar users
     prediction = np.nanmean(M.values[top_ten_similar_users, :], axis=1)
     prediction = pd.DataFrame(prediction, index=M.index, columns=M.columns)
-    
+
     result = []
     for i, r in M.loc[600, :].iteritems():
         if np.isnan(r) and 0<i<1000:
             result.append((i, prediction.loc[600, i]))
-    print sorted(result, key=lambda (k, v): -v)[:5]
+    tt = np.array(result, dtype=[('index', int), ('rating', float)])
+    print np.sort(tt, order='rating')[:10]
+    # print sorted(result, key=lambda (k, v): -v)[:5]
 
     # # iterate though columns 0~999 of matrix N, and fill out M[U, 0:1000]
     # prediction = M[U, 0:1000].copy()
