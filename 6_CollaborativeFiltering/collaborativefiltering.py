@@ -11,7 +11,9 @@ Example text file: http://www.di.kaist.ac.kr/~swhang/ee412/ratings.txt
 
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
+import pandas as pd
 import time
 import itertools
 
@@ -19,7 +21,7 @@ def parse(l):
     '''
     Arg:
         l (str): a string of data.
-    Return: 
+    Return:
         A list.
     '''
     userID, movieID, rating, timestamp = l.split(',')
@@ -27,7 +29,16 @@ def parse(l):
     movieID = int(movieID)
     rating = float(rating)
     timestamp = int(timestamp)
-    return [userID, movieID, rating, timestamp]
+    return userID, movieID, rating, timestamp
+
+def par_map(f, x):
+    with ThreadPoolExecutor() as executor:
+        return executor.map(f, x)
+
+def nandot(x, y):
+    x = np.nan_to_num(x, copy=True)
+    y = np.nan_to_num(y, copy=True)
+    return x.dot(y)
 
 def cosine(x, y):
     '''
@@ -44,6 +55,20 @@ def cosine(x, y):
         y = np.nan_to_num(y).flatten()
         return np.dot(x, y) / (norm(x) * norm(y))
     return result
+
+def similarity_matrix(M, type='user'):
+    '''
+    Calculate cosine similarity for user(or item)-based filtering.
+    '''
+    M = np.nan_to_num(M, copy=True)
+    if type == 'user':
+        M = M / np.sqrt(np.sum(M**2, axis=1, keepdims=True))
+        return M.dot(M.T)
+    elif type == 'item':
+        M = M / np.sqrt(np.sum(M**2, axis=0, keepdims=True))
+        return M.T.dot(M)
+    else:
+        raise ValueError
 
 def mean(x):
     '''
@@ -63,91 +88,101 @@ def normalize_utility_matrix(M):
     '''
     return M - np.nanmean(M, axis=1)[..., np.newaxis]
 
-def user_collaborative_filtering(M):
+def nanadd(x, y):
+    '''
+    Construct new matrix by completing values from x and y
+    '''
+    def nanadd_scalar(a, b):
+        if np.isnan(a) and np.isnan(b):
+            return np.nan
+        else:
+            return np.nan_to_num(a) + np.nan_to_num(b)
+    return np.vectorize(nanadd_scalar)(x, y)
 
-    '''normalize utility matrix'''
+def nanmerge(master, branch):
+    '''
+    Construct new matrix by completing values from master and branch.
+    Args:
+        master (np.ndarray)
+        branch (np.ndarray)
+    '''
+    def nanmerge_scalar(m, b):
+        if not np.isnan(m):
+            return m
+        elif not np.isnan(b):
+            return b
+        else:
+            return np.nan
+    return np.vectorize(nanmerge_scalar)(master, branch)
+
+def user_collaborative_filtering(M, topk=10):
+    '''
+    user-based collaborative filtering
+
+    Args:
+        M (pd.DataFrame)
+        topk (int): number of other users used for prediction
+    Return:
+        pd.DataFrame
+    '''
+
+    # normalize utility matrix
     normalized_M = normalize_utility_matrix(M)
 
-    ''' user-based collaborative filtering '''
-    # ID variables are denoted as index value
-    U = 600-2
-    top_ten_similar_users = sorted(range(normalized_M.shape[0]), key=lambda x: cosine(normalized_M[x, :], normalized_M[U, :]), reverse=True)[:10]
+    # calculate cosine similarity matrix to find similar users
+    S = similarity_matrix(normalized_M, type='user') # TODO: what if entire row is NaN?
+    S = S - np.diag(np.diag(S))
+    top_ten_similar_users = np.argsort(-S, axis=1)[:, :topk]
 
-    # slim utility matrix by top-10 similar users
-    N = M[top_ten_similar_users, :]
-    
-    # iterate though columns 0~999 of matrix N, and fill out M[U, 0:1000]
-    prediction = M[U, 0:1000].copy()
-    for j, movie_ratings in enumerate(N[:, 0:1000].T):
-        assert np.isnan(prediction[j])
-        prediction[j] = mean(movie_ratings)
-    
-    # print top-5 recommended movies among 1~1000
-    top_five_recommended_movies = np.argsort(-prediction)[:5]
-    for m in top_five_recommended_movies:
-        print '{}\t{}'.format( m + 1, prediction[m])
+    # make prediction by top-10 similar users
+    prediction = np.nanmean(M.values[top_ten_similar_users, :], axis=1)
+    prediction = pd.DataFrame(prediction, index=M.index, columns=M.columns)
+
+    # fill utility matrix using prediction
+    M[:] = nanmerge(M, prediction)
+
+    return M
 
 def item_collaborative_filtering(M):
-    
-    ''' normalize utility matrix '''
-    normalized_M = normalize_utility_matrix(M)
-
-    ''' item-based collaborative filtering '''
-    U = 600-2
-    prediction = M[U, 0:1000].copy()
-
-    ''' find top-10 similarly rated items 
-    # X: target utility matrix (subject for prediction)
-    # Y: source utility matrix (as a pre-condition) '''
-    X = np.nan_to_num(normalized_M[:, 0:1000])
-    Y = np.nan_to_num(normalized_M[:, 1000:])
-
-    # calculate cosine similarity between source and target items
-    Z = np.matmul(
-        (X / (np.linalg.norm(X, axis=0) + 1e-6)).T,
-        (Y / (np.linalg.norm(Y, axis=0) + 1e-6)))
-    
-    Q = np.argsort(-Z, axis=1)[:, :10]
-    Q = Q + 1000
-
-    # 10 similar movies of I => Q[i, :]
-
-    for j in range(len(prediction)):
-        prediction[j] = mean(M[U, Q[j, :]])
-
-    # print top-five recommendtion using item-item collaborative filtering 
-    top_five_recommended_movies = np.argsort(-prediction)[:5]
-    for m in top_five_recommended_movies:
-        print '{}\t{}'.format( m + 1, prediction[m])
-
+    pass
 
 def main():
     ''' parameters '''
     filepath = sys.argv[1]
+    query_user = 600
+    query_range = slice(1, 999)
+    topk = 10
+    topn = 20
 
     ''' read and parse dataset '''
     with open(filepath, 'r') as file:
         lines = file.readlines()
+        dataset = map(parse, lines)
 
-    ratings = map(parse, lines)
+    dataset = {(uid, mid): (r, t) for uid, mid, r, t in dataset}
 
     ''' make utility matrix '''
-    # initialize M with NaN value
-    M = np.full(shape=(671, 164979), fill_value=np.nan, dtype=np.float)
-    
-    # iterate over dataset and fill out utility matrix
-    for u, m, r, t in ratings:
-        M[u-2, m-1] = r
+    rows = list(set([uid for (uid, _) in dataset.keys()]))
+    cols = list(set([mid for (_, mid) in dataset.keys()]))
 
-    user_collaborative_filtering(M)
+    # TODO: parallelize this operation
+    matrix = pd.DataFrame(np.nan, index=rows, columns=cols, dtype=np.float)
+    for (uid, mid), (r, t) in dataset.items():
+        matrix.loc[uid, mid] = r
 
-    item_collaborative_filtering(M)
+    '''try to predict missing values by user-based collaborative filtering'''
+    matrix = user_collaborative_filtering(matrix, topk)
+
+    '''print recommendations'''
+    pred = matrix.loc[query_user, query_range]
+    for u, r in pred.sort_values(ascending=False)[:topn].iteritems():
+        print '{}\t{}'.format(u, r)
 
 if __name__ == '__main__':
 
     ''' sanity check '''
     assert os.path.exists(sys.argv[1]),  'Cannot find file.'
-    
+
     starttime = time.time()
     main()
     print 'Executed in: {}'.format(time.time()-starttime)
