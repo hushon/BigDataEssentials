@@ -9,6 +9,7 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
  - Python 2.7
  - Apache Spark 3.6
  - NumPy
+ - Pandas
 
 ## Algorithms
 
@@ -29,7 +30,7 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
 ## TODO
 
  - [ ] Upgrade to Python 3
- - [ ] Pandas support
+ - [x] Pandas support
 
 ## References
 
