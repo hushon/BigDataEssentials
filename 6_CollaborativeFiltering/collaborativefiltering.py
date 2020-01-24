@@ -64,14 +64,6 @@ def similarity_matrix(M, type='user'):
     else:
         raise ValueError
 
-def mean(x):
-    '''
-    Take mean of vector, but ignore np.nan values.
-    '''
-    x = np.array(x).flatten()
-    result = np.nanmean(x)
-    return result
-
 def normalize_utility_matrix(M):
     '''
     Normalize matrix by subtracting each row with its mean.
