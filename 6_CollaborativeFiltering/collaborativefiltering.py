@@ -29,10 +29,6 @@ def parse(l):
     timestamp = int(timestamp)
     return userID, movieID, rating, timestamp
 
-def par_map(f, x):
-    with ThreadPoolExecutor() as executor:
-        return executor.map(f, x)
-
 def nandot(x, y):
     x = np.nan_to_num(x, copy=True)
     y = np.nan_to_num(y, copy=True)
