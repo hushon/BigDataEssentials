@@ -11,11 +11,9 @@ Example text file: http://www.di.kaist.ac.kr/~swhang/ee412/ratings.txt
 
 import sys
 import os
-from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import pandas as pd
 import time
-import itertools
 
 def parse(l):
     '''
