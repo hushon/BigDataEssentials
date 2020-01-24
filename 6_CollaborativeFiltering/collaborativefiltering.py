@@ -82,17 +82,6 @@ def normalize_utility_matrix(M):
     '''
     return M - np.nanmean(M, axis=1)[..., np.newaxis]
 
-def nanadd(x, y):
-    '''
-    Construct new matrix by completing values from x and y
-    '''
-    def nanadd_scalar(a, b):
-        if np.isnan(a) and np.isnan(b):
-            return np.nan
-        else:
-            return np.nan_to_num(a) + np.nan_to_num(b)
-    return np.vectorize(nanadd_scalar)(x, y)
-
 def nanmerge(master, branch):
     '''
     Construct new matrix by completing values from master and branch.
