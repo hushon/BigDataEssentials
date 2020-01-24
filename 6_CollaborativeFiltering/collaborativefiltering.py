@@ -29,11 +29,6 @@ def parse(l):
     timestamp = int(timestamp)
     return userID, movieID, rating, timestamp
 
-def nandot(x, y):
-    x = np.nan_to_num(x, copy=True)
-    y = np.nan_to_num(y, copy=True)
-    return x.dot(y)
-
 def cosine(x, y):
     '''
     Arg:
