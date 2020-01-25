@@ -45,29 +45,42 @@ def cosine(x, y):
         return np.dot(x, y) / (norm(x) * norm(y))
     return result
 
-def similarity_matrix(M, type='user'):
+def similarity_matrix(M, mode='user'):
     '''
     Calculate cosine similarity for user(or item)-based filtering.
+    Args:
+        M (np.ndarray):
+        mode (str): 'user' or 'item'
+    Return:
+        np.ndarray
     '''
     M = np.nan_to_num(M, copy=True)
-    if type == 'user':
+    if mode == 'user':
         M = M / np.sqrt(np.sum(M**2, axis=1, keepdims=True))
         return M.dot(M.T)
-    elif type == 'item':
+    elif mode == 'item':
         M = M / np.sqrt(np.sum(M**2, axis=0, keepdims=True))
         return M.T.dot(M)
     else:
         raise ValueError
 
-def normalize_utility_matrix(M):
+def normalize_utility_matrix(M, mode='user'):
     '''
     Normalize matrix by subtracting each row with its mean.
     Arg:
         M (np.ndarray):
+        mode (str): 'user' or 'item'
     Return:
         Row-wise normalized M
     '''
-    return M - np.nanmean(M, axis=1)[..., np.newaxis]
+    assert mode in ['user', 'item']
+    if mode == 'user':
+        axis = 1
+    elif mode == 'item':
+        axis = 0
+    else:
+        raise ValueError
+    return M - np.nanmean(M, axis=axis)[..., np.newaxis]
 
 def nanmerge(master, branch):
     '''
@@ -75,6 +88,8 @@ def nanmerge(master, branch):
     Args:
         master (np.ndarray)
         branch (np.ndarray)
+    Return:
+        np.ndarray
     '''
     def nanmerge_scalar(m, b):
         if not np.isnan(m):
@@ -85,23 +100,25 @@ def nanmerge(master, branch):
             return np.nan
     return np.vectorize(nanmerge_scalar)(master, branch)
 
-def user_collaborative_filtering(M, topk=10):
+def user_collaborative_filtering(M, topk=10, mode='user'):
     '''
     user-based collaborative filtering
 
     Args:
         M (pd.DataFrame)
         topk (int): number of other users used for prediction
+        mode (str): 'user' or 'item'
     Return:
         pd.DataFrame
     '''
+    assert mode in ['user', 'item']
 
     # normalize utility matrix
-    normalized_M = normalize_utility_matrix(M)
+    normalized_M = normalize_utility_matrix(M, mode=mode)
 
     # calculate cosine similarity matrix to find similar users
-    S = similarity_matrix(normalized_M, type='user') # TODO: what if entire row is NaN?
-    S = S - np.diag(np.diag(S))
+    S = similarity_matrix(normalized_M, mode=mode) # TODO: what if entire row is NaN?
+    np.fill_diagonal(S, 0.0)
     top_ten_similar_users = np.argsort(-S, axis=1)[:, :topk]
 
     # make prediction by top-10 similar users
