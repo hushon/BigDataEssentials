@@ -75,12 +75,11 @@ def normalize_utility_matrix(M, mode='user'):
     '''
     assert mode in ['user', 'item']
     if mode == 'user':
-        axis = 1
+        return M - np.nanmean(M, axis=1)[..., np.newaxis]
     elif mode == 'item':
-        axis = 0
+        return M - np.nanmean(M, axis=0)[np.newaxis, ...]
     else:
         raise ValueError
-    return M - np.nanmean(M, axis=axis)[..., np.newaxis]
 
 def nanmerge(master, branch):
     '''
@@ -100,13 +99,14 @@ def nanmerge(master, branch):
             return np.nan
     return np.vectorize(nanmerge_scalar)(master, branch)
 
-def user_collaborative_filtering(M, topk=10, mode='user'):
+def collaborative_filtering(M, topk=10, mode='user'):
     '''
-    user-based collaborative filtering
-
+    Collaborative filtering to predict missing values in the matrix.
+    Missing entries should be assigned by NaN.
+    Mode decides between user-based or item-based filtering.
     Args:
         M (pd.DataFrame)
-        topk (int): number of other users used for prediction
+        topk (int): number of similar vectors used for prediction
         mode (str): 'user' or 'item'
     Return:
         pd.DataFrame
@@ -119,11 +119,20 @@ def user_collaborative_filtering(M, topk=10, mode='user'):
     # calculate cosine similarity matrix to find similar users
     S = similarity_matrix(normalized_M, mode=mode) # TODO: what if entire row is NaN?
     np.fill_diagonal(S, 0.0)
-    top_ten_similar_users = np.argsort(-S, axis=1)[:, :topk]
 
-    # make prediction by top-10 similar users
-    prediction = np.nanmean(M.values[top_ten_similar_users, :], axis=1)
-    prediction = pd.DataFrame(prediction, index=M.index, columns=M.columns)
+    if mode == 'user':
+        similar_users = np.argsort(-S, axis=1)[:, :topk]
+
+        # make prediction by top-k similar users
+        prediction = np.nanmean(M.values[similar_users, :], axis=1)
+        prediction = pd.DataFrame(prediction, index=M.index, columns=M.columns)
+
+    elif mode == 'item':
+        similar_items = np.argsort(-S, axis=1)[:, :topk]
+
+        # make prediction by top-k similar items
+        prediction = np.nanmean(M.values[:, similar_items], axis=2)
+        prediction = pd.DataFrame(prediction, index=M.index, columns=M.columns)
 
     # fill utility matrix using prediction
     M[:] = nanmerge(M, prediction)
@@ -158,7 +167,7 @@ def main():
         matrix.loc[uid, mid] = r
 
     '''try to predict missing values by user-based collaborative filtering'''
-    matrix = user_collaborative_filtering(matrix, topk)
+    matrix = user_collaborative_filtering(matrix, topk, mode='user')
 
     '''print recommendations'''
     pred = matrix.loc[query_user, query_range]
@@ -168,7 +177,7 @@ def main():
 if __name__ == '__main__':
 
     ''' sanity check '''
-    assert os.path.exists(sys.argv[1]),  'Cannot find file.'
+    assert os.path.exists(sys.argv[1]), 'Cannot find file.'
 
     starttime = time.time()
     main()
