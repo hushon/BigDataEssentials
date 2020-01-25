@@ -145,8 +145,9 @@ def item_collaborative_filtering(M):
 def main():
     ''' parameters '''
     filepath = sys.argv[1]
-    query_user = 600
-    query_range = slice(1, 999)
+    mode = 'user' # user- or item-based filtering
+    query_uid = 600 # target user ID
+    query_mid = slice(1, 999) # target movie ID
     topk = 10
     topn = 20
 
@@ -166,11 +167,11 @@ def main():
     for (uid, mid), (r, t) in dataset.items():
         matrix.loc[uid, mid] = r
 
-    '''try to predict missing values by user-based collaborative filtering'''
-    matrix = user_collaborative_filtering(matrix, topk, mode='user')
+    '''try to predict missing values by collaborative filtering'''
+    matrix = collaborative_filtering(matrix, topk, mode=mode)
 
     '''print recommendations'''
-    pred = matrix.loc[query_user, query_range]
+    pred = matrix.loc[query_uid, query_mid]
     for u, r in pred.sort_values(ascending=False)[:topn].iteritems():
         print '{}\t{}'.format(u, r)
 
