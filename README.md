@@ -1,4 +1,4 @@
-# Big Data Analysis Algorithms
+# Big Data Analysis with Spark
 ## Introduction
 
 In this repository you will find common algorithms used in big data analytics. The examples refer to the problems in Stanford's CS246 course.  
