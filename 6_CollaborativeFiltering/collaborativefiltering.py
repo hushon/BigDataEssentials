@@ -83,7 +83,8 @@ def normalize_utility_matrix(M, mode='user'):
 
 def nanmerge(master, branch):
     '''
-    Construct new matrix by completing values from master and branch.
+    Merge two matrices by completing missing values of master matrix using branch matrix.
+    If both entries have non-NaN value, prioritize the value in master matrix.
     Args:
         master (np.ndarray)
         branch (np.ndarray)
