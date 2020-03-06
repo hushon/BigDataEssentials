@@ -1,15 +1,16 @@
 # Big Data Analysis with Spark
+
 ## Introduction
 
-In this repository you will find common algorithms used in big data analytics. The examples refer to the problems in Stanford's CS246 course.  
-Codes are written in Python, and some utilize Apache Spark API to leverage parallelism in the workloads.  
+This repo demonstrates common big data analytics algorithms in python. The examples refer to the problems in Stanford's CS246 course.  
+Some codes require Apache Spark API to leverage MapReduce style of workload parallelism.  
 
 ## Requirements
 
- - Python 2.7
- - Apache Spark 3.6
- - NumPy
- - Pandas
+- Python 2.7
+- Apache Spark 3.6
+- NumPy
+- Pandas
 
 ## Algorithms
 
@@ -29,10 +30,10 @@ Codes are written in Python, and some utilize Apache Spark API to leverage paral
 
 ## TODO
 
- - [ ] Upgrade to Python 3
- - [x] Pandas support
+- [ ] Upgrade to Python 3
+- [x] Pandas support
 
 ## References
 
- - [Jure Leskovec, Anand Rajaraman, Jeff Ullman, *Mining of Massive Datasets*](http://www.mmds.org/)
- - [Jure Leskovec, Michele Catasta, *CS246: Mining Massive Datasets*, Stanford](http://web.stanford.edu/class/cs246/)
+- [Jure Leskovec, Anand Rajaraman, Jeff Ullman, *Mining of Massive Datasets*](http://www.mmds.org/)
+- [Jure Leskovec, Michele Catasta, *CS246: Mining Massive Datasets*, Stanford](http://web.stanford.edu/class/cs246/)
