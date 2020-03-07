@@ -7,8 +7,8 @@ Some codes require Apache Spark API to leverage MapReduce style of workload para
 
 ## Requirements
 
-- Python 2.7
-- Apache Spark 3.6
+- Python 2
+- Apache Spark 2.4
 - NumPy
 - Pandas
 
